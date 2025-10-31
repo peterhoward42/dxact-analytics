@@ -1,0 +1,11 @@
+# The service-injest-event parameter is the name you want GCP to adopt for the `service` that implmeents your function.
+# The InjestEvent parameter should be the name you used in your code to register the function.
+# The base-image parameter tells GCP which "build pack" it should use to build the Docker image around your code.
+# The regionr parameter specifies where you want the function to run.
+.PHONY: deploy
+deploy:
+	gcloud run deploy service-injest-event --source . --function InjestEvent --base-image go125 --region europe-west2
+
+.PHONY: trigger
+trigger:
+	curl -X POST https://service-injest-event-65030510907.europe-west2.run.app -d '{"Msg": "harry"}'
