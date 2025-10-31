@@ -20,18 +20,33 @@ func init() {
 // All it does is to echo the .Msg field from the POSTed data
 // as the response.
 func injestEvent(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	var payload SamplePayload
-	err := decoder.Decode(&payload)
-	if err != nil {
-		fmt.Fprintln(w, err)
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	reply := fmt.Sprintf("Received msg: %s", payload.Msg)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	var payload ExpectedPayload
+	err := decoder.Decode(&payload)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "%s", err.Error())
+		return
+	}
+	reply := fmt.Sprintf("%+v", payload)
 	fmt.Fprintln(w, reply)
 }
 
-type SamplePayload struct {
-	Msg string
+type ExpectedPayload struct {
+	ProxyUserId string
+	TimeUTC     string
+	Visit       int
+	Event       string
+	Parameters  string
 }
