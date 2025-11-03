@@ -4,7 +4,7 @@ import "github.com/go-playground/validator"
 
 // An EventPayload instance is the type used for comminuicating DrawExact telemetry events.
 type EventPayload struct {
-	EventULID   string `validate:"ulid"`
+	EventULID   string `validate:"len=26"`
 	ProxyUserId string `validate:"uuid4"`
 	TimeUTC     string `validate:"datetime=2006-01-02T15:04:05Z07:00"` // RFC3339
 	Visit       int    `validate:"max=100000,min=1"`
