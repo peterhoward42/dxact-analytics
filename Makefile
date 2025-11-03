@@ -8,4 +8,11 @@ deploy:
 
 .PHONY: trigger
 trigger:
-	curl -X POST https://service-injest-event-65030510907.europe-west2.run.app -d '{"Msg": "harry"}'
+	curl -X POST https://service-injest-event-65030510907.europe-west2.run.app -d '{ \
+	"ProxyUserId": "thisuuid", \
+	"TimeUTC": "thisTime", \
+	"Visit": 3, \
+	"Event": "this event", \
+	"Parameters": \
+	"these params" \
+	}'
