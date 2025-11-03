@@ -1,6 +1,6 @@
 package lib
 
-// An EventPayload instance is the type used for comminuicating events.
+// An EventPayload instance is the type used for comminuicating DrawExact telemetry events.
 type EventPayload struct {
 	EventULID   string
 	ProxyUserId string
