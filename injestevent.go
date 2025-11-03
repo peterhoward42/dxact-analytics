@@ -29,6 +29,7 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
+	fmt.Printf("XXXX arrived in injestEvent() - about to decode the json\n")
 	// First decode the incoming JSON into a Payload struct
 	decoder := json.NewDecoder(r.Body)
 	var payload lib.EventPayload
@@ -36,6 +37,7 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 		processError(w, http.StatusBadRequest, err)
 		return
 	}
+	fmt.Printf("XXXX  about to validate the unmarshalled payload struct\n")
 
 	// Perform some validation with two aims:
 	// 1) recognise spurious requests from bad actors.
@@ -45,45 +47,50 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sythesise the unique bucket path and filename for this event.
-	path, err := lib.BuildFullPathForRawEvent(payload.TimeUTC, payload.EventULID)
-	if err != nil {
-		processError(w, http.StatusInternalServerError, err)
-		return
-	}
-	_ = path
 	/*
-		gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		gcsClient, err := storage.NewClient(gcsContext)
+		// Sythesise the unique bucket path and filename for this event.
+		path, err := lib.BuildFullPathForRawEvent(payload.TimeUTC, payload.EventULID)
 		if err != nil {
 			processError(w, http.StatusInternalServerError, err)
 			return
 		}
-		defer gcsClient.Close()
-
-		// Re-encode the payload gzip compressed NDJSON.
-
-			var outputBuffer bytes.Buffer
-			gzipWriter := gzip.NewWriter(&outputBuffer)
-			enc := json.NewEncoder(gzipWriter)
-			enc.SetEscapeHTML(false) // makes it more readable
-			if err := enc.Encode(payload); err != nil {
+		_ = path
+			gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+			defer cancel()
+			gcsClient, err := storage.NewClient(gcsContext)
+			if err != nil {
 				processError(w, http.StatusInternalServerError, err)
 				return
 			}
-			if err := gzipWriter.Close(); err != nil {
-				processError(w, http.StatusInternalServerError, err)
-				return
-			}
+			defer gcsClient.Close()
 
-			gzippedBytes := outputBuffer.Bytes()
-			fmt.Printf("XXXX gzippedBytes: %s\n", litter.Sdump(gzippedBytes))
+			// Re-encode the payload gzip compressed NDJSON.
+
+				var outputBuffer bytes.Buffer
+				gzipWriter := gzip.NewWriter(&outputBuffer)
+				enc := json.NewEncoder(gzipWriter)
+				enc.SetEscapeHTML(false) // makes it more readable
+				if err := enc.Encode(payload); err != nil {
+					processError(w, http.StatusInternalServerError, err)
+					return
+				}
+				if err := gzipWriter.Close(); err != nil {
+					processError(w, http.StatusInternalServerError, err)
+					return
+				}
+
+				gzippedBytes := outputBuffer.Bytes()
+				fmt.Printf("XXXX gzippedBytes: %s\n", litter.Sdump(gzippedBytes))
 	*/
+	fmt.Printf("XXXX writing an OK header\n")
+
 	w.WriteHeader(http.StatusOK)
 }
 
 func processError(w http.ResponseWriter, statusCode int, err error) {
+	errMsg := err.Error()
+	fmt.Printf("XXXX in processError, the msg is: %s\n", errMsg)
+
+	fmt.Fprintf(w, "%s", errMsg)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, "%s", err.Error())
 }
