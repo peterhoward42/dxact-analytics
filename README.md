@@ -82,12 +82,12 @@ FUNCTION_TARGET=InjestEvent  go run cmd/main.go
 curl -X POST \
 localhost:8080 \
 -d '{
-"ProxyUserId": "thisuuid", 
-"TimeUTC": "thisTime",
+"EventULID": "01G65Z755AFWAKHE12NY0CQ9FH",
+"ProxyUserId": "9e61fcda-ddf5-4294-9b1b-36263317c99f", 
+"TimeUTC": "2023-09-24T15:30:00Z",
 "Visit": 3, 
 "Event": "this event", 
-"Parameters": 
-"these params"
+"Parameters": "these params"
 }'
 
 ```
