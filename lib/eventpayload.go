@@ -7,7 +7,7 @@ type EventPayload struct {
 	TimeUTC     string
 	Visit       int
 	Event       string
-	Parameters  []string
+	Parameters  string
 }
 
 // NewEventPayload provides an EventPayload ready to use.
@@ -17,7 +17,7 @@ func NewEventPayload(
 	timeUTC string,
 	visit int,
 	event string,
-	parameters []string,
+	parameters string,
 ) *EventPayload {
 	return &EventPayload{
 		EventULID:   eventULID,
