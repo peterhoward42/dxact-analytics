@@ -1,6 +1,7 @@
 package function
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,11 +33,12 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	var payload *lib.EventPayload
 	var ok bool
 
+	// First a plain unmarshal of the payload.
 	if payload, ok = parseJSON(w, r); !ok {
 		return
 	}
 
-	// Validate payload for integrity, but also to maybe spot malicious requests.
+	// Validate the payload for integrity, but also to maybe spot malicious requests.
 	if err := validator.New().Struct(payload); err != nil {
 		processError(w, http.StatusInternalServerError, err)
 		return
@@ -52,6 +54,8 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 
 	// Construct a GCS client
 
+	fmt.Printf("XXXX constructing gcsClient\n")
+
 	gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	gcsClient, err := storage.NewClient(gcsContext)
@@ -60,26 +64,47 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer gcsClient.Close()
-	/*
-		// Re-encode the payload gzip compressed NDJSON.
 
-			var outputBuffer bytes.Buffer
-			gzipWriter := gzip.NewWriter(&outputBuffer)
-			enc := json.NewEncoder(gzipWriter)
-			enc.SetEscapeHTML(false) // makes it more readable
-			if err := enc.Encode(payload); err != nil {
-				processError(w, http.StatusInternalServerError, err)
-				return
-			}
-			if err := gzipWriter.Close(); err != nil {
-				processError(w, http.StatusInternalServerError, err)
-				return
-			}
+	// Obtain the bucket handle
+	fmt.Printf("XXXX obtaining bucket handle\n")
+	const telemetryBucket = "drawexact-telemetry"
+	gcsBucket := gcsClient.Bucket(telemetryBucket)
 
-			gzippedBytes := outputBuffer.Bytes()
-			fmt.Printf("XXXX gzippedBytes: %s\n", litter.Sdump(gzippedBytes))
-	*/
-	fmt.Printf("XXXX writing an OK header\n")
+	// We compose a pipeline of writers that terminates with one that can write to a GCS bucket.
+	fmt.Printf("XXXX construct a bucket writer\n")
+	bucketWriter := gcsBucket.Object(path).NewWriter(gcsContext)
+	bucketWriter.ContentType = "application/x-ndjson"
+	bucketWriter.ContentEncoding = "gzip"
+
+	// Next upstream write stage is gzip compression.
+	fmt.Printf("XXXX construct a gzip writer\n")
+	gzw := gzip.NewWriter(bucketWriter)
+
+	// Next upstream write stage is JSON encoder (NDJSON format).
+	fmt.Printf("XXXX construct a json encoding writer\n")
+	enc := json.NewEncoder(gzw)
+	enc.SetEscapeHTML(false)
+
+	// So now if we do the JSON encode - the output will be first gzipped, then
+	// then written to the storage bucket.
+	fmt.Printf("XXXX fire the json encoder and pipeline\n")
+
+	if err := enc.Encode(payload); err != nil {
+		processError(w, http.StatusInternalServerError, err)
+		return
+	}
+	// Force the gzip writer to flush.
+	if err := gzw.Close(); err != nil {
+		processError(w, http.StatusInternalServerError, err)
+		return
+	}
+	// Force the bucket writer to flush.
+	if err := bucketWriter.Close(); err != nil {
+		processError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	fmt.Printf("XXXX injestEvent complete, writing an OK header\n")
 
 	w.WriteHeader(http.StatusOK)
 }
