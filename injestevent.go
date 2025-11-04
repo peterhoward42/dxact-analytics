@@ -21,19 +21,21 @@ func init() {
 }
 
 // injestEvent is the entry point for receiving POST requests
-// with a JSON payload that matches the SamplePayload type.
+// with a JSON payload that matches the EventPayload type.
+// It writes the event to as self-contained Google Cloud Storage (GCS) file,
+// using a hierarchical path that encodes the year/month/day and with a globally unique name.
 func injestEvent(w http.ResponseWriter, r *http.Request) {
 
+	// CORS
 	if r.Method == http.MethodOptions {
 		setPreFlightOptionHeaders(w)
 		return
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
+	// First a plain unmarshal of the payload.
 	var payload *lib.EventPayload
 	var ok bool
-
-	// First a plain unmarshal of the payload.
 	if payload, ok = parseJSON(w, r); !ok {
 		return
 	}
@@ -67,10 +69,12 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 
 	// Obtain the bucket handle
 	fmt.Printf("XXXX obtaining bucket handle\n")
+
+	// XXXX todo - fix: this hard code bucket violates 12-factor design principles.
 	const telemetryBucket = "drawexact-telemetry"
 	gcsBucket := gcsClient.Bucket(telemetryBucket)
 
-	// We compose a pipeline of writers that terminates with one that can write to a GCS bucket.
+	// We compose a pipeline of io.Writer(s) that ends with a writer that can write to a GCS bucket.
 	fmt.Printf("XXXX construct a bucket writer\n")
 	bucketWriter := gcsBucket.Object(path).NewWriter(gcsContext)
 	bucketWriter.ContentType = "application/x-ndjson"
@@ -80,13 +84,13 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("XXXX construct a gzip writer\n")
 	gzw := gzip.NewWriter(bucketWriter)
 
-	// Next upstream write stage is JSON encoder (NDJSON format).
+	// Final upstream write stage is JSON encoder (NDJSON format).
 	fmt.Printf("XXXX construct a json encoding writer\n")
 	enc := json.NewEncoder(gzw)
 	enc.SetEscapeHTML(false)
 
-	// So now if we do the JSON encode - the output will be first gzipped, then
-	// then written to the storage bucket.
+	// So now if we do the JSON encode - the encoded output will be first gzipped, then
+	// written to the storage bucket.
 	fmt.Printf("XXXX fire the json encoder and pipeline\n")
 
 	if err := enc.Encode(payload); err != nil {
@@ -109,6 +113,9 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// processError is a DRY helper that writes the given error's message to
+// the given http.ResponseWriter's body, and writes the given HTTP status error code
+// the the reponse header.
 func processError(w http.ResponseWriter, statusCode int, err error) {
 	errMsg := err.Error()
 	fmt.Printf("XXXX in processError, the msg is: %s\n", errMsg)
@@ -117,6 +124,8 @@ func processError(w http.ResponseWriter, statusCode int, err error) {
 	w.WriteHeader(statusCode)
 }
 
+// setPreFlightOptionHeaders knows how to set the various required CORS
+// headers on the given http.ResponseWriter.
 func setPreFlightOptionHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST")
@@ -125,6 +134,8 @@ func setPreFlightOptionHeaders(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// parseJSON is a simple wrapper that adds some error handling around a json encoder
+// in the context of an HTTP request/response.
 func parseJSON(w http.ResponseWriter, r *http.Request) (payload *lib.EventPayload, ok bool) {
 	payload = &lib.EventPayload{}
 	decoder := json.NewDecoder(r.Body)

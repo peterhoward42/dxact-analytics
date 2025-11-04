@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// Provides a bucket path and filename for a single raw event, that facilitates
+// BuildFullPathForRawEvent provides a bucket path and filename for a single raw event. The path facilitates
 // date/time partitioning, and guarantees uniqueness.
 //
 // Example:
 //
-// events/y=2025/m=11/d=01/hour=14/<proxyUserID>-<timestampUTC>-<eventUUID>.ndjson.gz
+// events/y=2025/m=11/d=01/hour=14/<eventUUID>.ndjson.gz
 //
 // The time encoding provides a well known data-lake / Hive-style partitioning pattern.
 func BuildFullPathForRawEvent(timeUTC, eventULID string) (path string, err error) {
@@ -25,6 +25,8 @@ func BuildFullPathForRawEvent(timeUTC, eventULID string) (path string, err error
 	return fullPath, nil
 }
 
+// getTimeCompartmentsAsInts parses out the year, month etc from the given timestamp,
+// having converted the timestamp to UTC.
 func getTimeCompartmentsAsInts(timeUTC string) (year, month, day, hour int, err error) {
 	theTime, err := time.Parse(time.RFC3339, timeUTC)
 	if err != nil {
