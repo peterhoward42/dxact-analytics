@@ -1,10 +1,13 @@
 package function
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/peterhoward42/dxact-analytics/lib"
 
@@ -19,68 +22,62 @@ func init() {
 // injestEvent is the entry point for receiving POST requests
 // with a JSON payload that matches the SamplePayload type.
 func injestEvent(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Max-Age", "3600")
-		w.WriteHeader(http.StatusNoContent)
+		setPreFlightOptionHeaders(w)
 		return
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	fmt.Printf("XXXX arrived in injestEvent() - about to decode the json\n")
-	// First decode the incoming JSON into a Payload struct
-	decoder := json.NewDecoder(r.Body)
-	var payload lib.EventPayload
-	if err := decoder.Decode(&payload); err != nil {
-		processError(w, http.StatusBadRequest, err)
+	var payload *lib.EventPayload
+	var ok bool
+
+	if payload, ok = parseJSON(w, r); !ok {
 		return
 	}
-	fmt.Printf("XXXX  about to validate the unmarshalled payload struct\n")
 
-	// Perform some validation with two aims:
-	// 1) recognise spurious requests from bad actors.
-	// 2) ensure the fields are plausible to do their job.
+	// Validate payload for integrity, but also to maybe spot malicious requests.
 	if err := validator.New().Struct(payload); err != nil {
 		processError(w, http.StatusInternalServerError, err)
 		return
 	}
 
+	// Sythesise the unique and deterministic bucket path and filename for this event.
+	path, err := lib.BuildFullPathForRawEvent(payload.TimeUTC, payload.EventULID)
+	if err != nil {
+		processError(w, http.StatusInternalServerError, err)
+		return
+	}
+	fmt.Printf("XXXX Built this path: %s\n", path)
+
+	// Construct a GCS client
+
+	gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	gcsClient, err := storage.NewClient(gcsContext)
+	if err != nil {
+		processError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer gcsClient.Close()
 	/*
-		// Sythesise the unique bucket path and filename for this event.
-		path, err := lib.BuildFullPathForRawEvent(payload.TimeUTC, payload.EventULID)
-		if err != nil {
-			processError(w, http.StatusInternalServerError, err)
-			return
-		}
-		_ = path
-			gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-			defer cancel()
-			gcsClient, err := storage.NewClient(gcsContext)
-			if err != nil {
+		// Re-encode the payload gzip compressed NDJSON.
+
+			var outputBuffer bytes.Buffer
+			gzipWriter := gzip.NewWriter(&outputBuffer)
+			enc := json.NewEncoder(gzipWriter)
+			enc.SetEscapeHTML(false) // makes it more readable
+			if err := enc.Encode(payload); err != nil {
 				processError(w, http.StatusInternalServerError, err)
 				return
 			}
-			defer gcsClient.Close()
+			if err := gzipWriter.Close(); err != nil {
+				processError(w, http.StatusInternalServerError, err)
+				return
+			}
 
-			// Re-encode the payload gzip compressed NDJSON.
-
-				var outputBuffer bytes.Buffer
-				gzipWriter := gzip.NewWriter(&outputBuffer)
-				enc := json.NewEncoder(gzipWriter)
-				enc.SetEscapeHTML(false) // makes it more readable
-				if err := enc.Encode(payload); err != nil {
-					processError(w, http.StatusInternalServerError, err)
-					return
-				}
-				if err := gzipWriter.Close(); err != nil {
-					processError(w, http.StatusInternalServerError, err)
-					return
-				}
-
-				gzippedBytes := outputBuffer.Bytes()
-				fmt.Printf("XXXX gzippedBytes: %s\n", litter.Sdump(gzippedBytes))
+			gzippedBytes := outputBuffer.Bytes()
+			fmt.Printf("XXXX gzippedBytes: %s\n", litter.Sdump(gzippedBytes))
 	*/
 	fmt.Printf("XXXX writing an OK header\n")
 
@@ -93,4 +90,22 @@ func processError(w http.ResponseWriter, statusCode int, err error) {
 
 	fmt.Fprintf(w, "%s", errMsg)
 	w.WriteHeader(statusCode)
+}
+
+func setPreFlightOptionHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Max-Age", "3600")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func parseJSON(w http.ResponseWriter, r *http.Request) (payload *lib.EventPayload, ok bool) {
+	payload = &lib.EventPayload{}
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(payload); err != nil {
+		processError(w, http.StatusBadRequest, err)
+		return nil, false
+	}
+	return payload, true
 }
