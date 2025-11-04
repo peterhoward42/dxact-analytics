@@ -52,12 +52,8 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 		processError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fmt.Printf("XXXX Built this path: %s\n", path)
 
 	// Construct a GCS client
-
-	fmt.Printf("XXXX constructing gcsClient\n")
-
 	gcsContext, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	gcsClient, err := storage.NewClient(gcsContext)
@@ -68,30 +64,24 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	defer gcsClient.Close()
 
 	// Obtain the bucket handle
-	fmt.Printf("XXXX obtaining bucket handle\n")
-
 	// XXXX todo - fix: this hard code bucket violates 12-factor design principles.
 	const telemetryBucket = "drawexact-telemetry"
 	gcsBucket := gcsClient.Bucket(telemetryBucket)
 
 	// We compose a pipeline of io.Writer(s) that ends with a writer that can write to a GCS bucket.
-	fmt.Printf("XXXX construct a bucket writer\n")
 	bucketWriter := gcsBucket.Object(path).NewWriter(gcsContext)
 	bucketWriter.ContentType = "application/x-ndjson"
 	bucketWriter.ContentEncoding = "gzip"
 
 	// Next upstream write stage is gzip compression.
-	fmt.Printf("XXXX construct a gzip writer\n")
 	gzw := gzip.NewWriter(bucketWriter)
 
 	// Final upstream write stage is JSON encoder (NDJSON format).
-	fmt.Printf("XXXX construct a json encoding writer\n")
 	enc := json.NewEncoder(gzw)
 	enc.SetEscapeHTML(false)
 
 	// So now if we do the JSON encode - the encoded output will be first gzipped, then
 	// written to the storage bucket.
-	fmt.Printf("XXXX fire the json encoder and pipeline\n")
 
 	if err := enc.Encode(payload); err != nil {
 		processError(w, http.StatusInternalServerError, err)
@@ -108,8 +98,6 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("XXXX injestEvent complete, writing an OK header\n")
-
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -118,8 +106,6 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 // the the reponse header.
 func processError(w http.ResponseWriter, statusCode int, err error) {
 	errMsg := err.Error()
-	fmt.Printf("XXXX in processError, the msg is: %s\n", errMsg)
-
 	fmt.Fprintf(w, "%s", errMsg)
 	w.WriteHeader(statusCode)
 }
