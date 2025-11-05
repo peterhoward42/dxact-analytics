@@ -60,7 +60,34 @@ func (sc *SimpleCounter) Visit(event lib.EventPayload, path string) (err error) 
 }
 
 func (sc *SimpleCounter) Report() string {
-	return litter.Sdump(sc.userBehaviours)
+	howManyPeopleHave := HowManyPeopleHave{}
+	for _, behaviour := range sc.userBehaviours {
+		if behaviour.Launched {
+			howManyPeopleHave.Launched += 1
+		}
+		if behaviour.EnteredTrainingCage {
+			howManyPeopleHave.EnteredTraining += 1
+		}
+		if behaviour.CompletedTrainingCage {
+			howManyPeopleHave.CompletedTraining += 1
+		}
+		if behaviour.LoadedAnExample {
+			howManyPeopleHave.LoadedAnExample += 1
+		}
+		if behaviour.SignInStarted {
+			howManyPeopleHave.TriedToSignIn += 1
+		}
+		if behaviour.SignInSucceeded {
+			howManyPeopleHave.SucceededSigningIn += 1
+		}
+		if behaviour.CreatedNewDrawing {
+			howManyPeopleHave.CreatedTheirOwnDrawing += 1
+		}
+		if behaviour.ReteivedSavedDrawing {
+			howManyPeopleHave.RetreivedTheirASavedDrawing += 1
+		}
+	}
+	return litter.Sdump(howManyPeopleHave)
 }
 
 type UserBehaviour struct {
@@ -76,4 +103,15 @@ type UserBehaviour struct {
 
 func NewUserBehaviour() *UserBehaviour {
 	return &UserBehaviour{}
+}
+
+type HowManyPeopleHave struct {
+	Launched                    int
+	EnteredTraining             int
+	CompletedTraining           int
+	LoadedAnExample             int
+	TriedToSignIn               int
+	SucceededSigningIn          int
+	CreatedTheirOwnDrawing      int
+	RetreivedTheirASavedDrawing int
 }
