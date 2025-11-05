@@ -82,4 +82,10 @@ See the Makefile `triger` target.
 
 See the Makefile `download` target.
 
+# Run the analytics process
+
+(depends on having done the `download` step)
+
+See the Makefile `report` target.
+
 

@@ -21,9 +21,9 @@ func init() {
 }
 
 // injestEvent is the entry point for receiving POST requests
-// with a JSON payload that matches the EventPayload type.
-// It writes the event to as self-contained Google Cloud Storage (GCS) file,
-// using a hierarchical path that encodes the year/month/day and with a globally unique name.
+// with a JSON payload that matches the lib.EventPayload type.
+// It writes the event to a Google Cloud Storage (GCS) as a single file. I.e. one file per event is stored.
+// It uses a hierarchical path that encodes the year/month/day and with a globally unique name.
 func injestEvent(w http.ResponseWriter, r *http.Request) {
 
 	// CORS
@@ -41,7 +41,7 @@ func injestEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the payload for integrity, but also to maybe spot malicious requests.
-	if err := validator.New().Struct(payload); err != nil {
+	if err := payload.Validate(); err != nil {
 		processError(w, http.StatusInternalServerError, err)
 		return
 	}

@@ -10,7 +10,9 @@ type SimpleCounter struct {
 
 	// userBehaviours captures event counts and flags on a per user basis.
 	// It is keyed on a user's proxyID.
-	userBehaviours map[string]*UserBehaviour
+	userBehaviours         map[string]*UserBehaviour
+	countRecoverableErrors int
+	countFatalErrors       int
 }
 
 func NewSimpleCounter() *SimpleCounter {
@@ -20,6 +22,13 @@ func NewSimpleCounter() *SimpleCounter {
 }
 
 func (sc *SimpleCounter) Visit(event lib.EventPayload, path string) (err error) {
+	switch event.Event {
+	case "evt:recoverable-javascript-error":
+		sc.countRecoverableErrors += 1
+	case "evt:fatal-javascript-error":
+		sc.countFatalErrors += 1
+	}
+
 	// Initialise the per-user behaviour record the first time we encounter a user.
 	var thisUsersBehaviour *UserBehaviour
 	var ok bool
@@ -59,8 +68,14 @@ func (sc *SimpleCounter) Visit(event lib.EventPayload, path string) (err error) 
 	return
 }
 
+// Report composes a report to out for this telemetry analyser.
 func (sc *SimpleCounter) Report() string {
-	howManyPeopleHave := HowManyPeopleHave{}
+	report := NewReport()
+
+	report.TotalFatalErrors = sc.countFatalErrors
+	report.TotalRecoverableErrors = sc.countRecoverableErrors
+
+	howManyPeopleHave := report.HowManyPeopleHave
 	for _, behaviour := range sc.userBehaviours {
 		if behaviour.Launched {
 			howManyPeopleHave.Launched += 1
@@ -87,9 +102,12 @@ func (sc *SimpleCounter) Report() string {
 			howManyPeopleHave.RetreivedTheirASavedDrawing += 1
 		}
 	}
-	return litter.Sdump(howManyPeopleHave)
+	return litter.Sdump(report)
 }
 
+// A UserBehaviour value tells you if a given user has done various things at any point in their
+// DrawExact usage history. They are an approximate indicator of how far they get in the onboarding
+// phase.
 type UserBehaviour struct {
 	Launched              bool
 	EnteredTrainingCage   bool
@@ -105,6 +123,8 @@ func NewUserBehaviour() *UserBehaviour {
 	return &UserBehaviour{}
 }
 
+// HowManyPeopleHave holds a count of how many users have reached various
+// onboarding milestones.
 type HowManyPeopleHave struct {
 	Launched                    int
 	EnteredTraining             int
@@ -114,4 +134,16 @@ type HowManyPeopleHave struct {
 	SucceededSigningIn          int
 	CreatedTheirOwnDrawing      int
 	RetreivedTheirASavedDrawing int
+}
+
+type Report struct {
+	HowManyPeopleHave      *HowManyPeopleHave
+	TotalRecoverableErrors int
+	TotalFatalErrors       int
+}
+
+func NewReport() *Report {
+	return &Report{
+		HowManyPeopleHave: &HowManyPeopleHave{},
+	}
 }
