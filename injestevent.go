@@ -11,8 +11,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/peterhoward42/dxact-analytics/lib"
-
-	validator "github.com/go-playground/validator/v10"
 )
 
 // Register a name for the entry point function.
