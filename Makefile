@@ -28,6 +28,6 @@ download:
 	gcloud storage cp --recursive gs://drawexact-telemetry ~/scratch
 
 # Perform an analysis on the downloaded local copy of the telemetry events
-.PHONY: analyse
-analyse:
+.PHONY: report
+report:
 	cd analysis/cmd/walker; go run main.go
