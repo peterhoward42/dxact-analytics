@@ -62,12 +62,12 @@ In overview this is to:
 # Configuring gcloud
 In overview this is to:
 
+```
 - update gcloud
 - set config for:
     - your identity (gmail address)
     - your current gcp project
     - the region in which to run Cloud Run functions
-
 ```
 
 # Deploy it as a cloud function
@@ -77,5 +77,9 @@ See the Makefile `deploy` target.
 # Check it is running and working
 
 See the Makefile `triger` target. 
+
+# Download the raw event data
+
+See the Makefile `download` target.
 
 

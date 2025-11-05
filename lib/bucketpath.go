@@ -11,7 +11,7 @@ import (
 //
 // Example:
 //
-// events/y=2025/m=11/d=01/hour=14/<eventUUID>.ndjson.gz
+// events/y=2025/m=11/d=01/hour=14/<eventULID>.ndjson.gz
 //
 // The time encoding provides a well known data-lake / Hive-style partitioning pattern.
 func BuildFullPathForRawEvent(timeUTC, eventULID string) (path string, err error) {

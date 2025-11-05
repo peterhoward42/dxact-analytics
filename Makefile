@@ -16,3 +16,8 @@ trigger:
 	"Event": "this event", \
 	"Parameters": "these params" \
 	}' \
+
+
+.PHONY: download
+download:
+	gcloud storage cp --recursive gs://drawexact-telemetry ~/scratch
