@@ -42,12 +42,6 @@ func (sc *SimpleCounter) Visit(event lib.EventPayload, path string) (err error) 
 	case event.Event == "evt:launched":
 		thisUsersBehaviour.Launched = true
 
-	case event.Event == "evt:enter-training-cage":
-		thisUsersBehaviour.EnteredTrainingCage = true
-
-	case event.Event == "evt:training-completed":
-		thisUsersBehaviour.CompletedTrainingCage = true
-
 	case event.Event == "evt:sign-in-started":
 		thisUsersBehaviour.SignInStarted = true
 
@@ -80,12 +74,7 @@ func (sc *SimpleCounter) Report() string {
 		if behaviour.Launched {
 			howManyPeopleHave.Launched += 1
 		}
-		if behaviour.EnteredTrainingCage {
-			howManyPeopleHave.EnteredTraining += 1
-		}
-		if behaviour.CompletedTrainingCage {
-			howManyPeopleHave.CompletedTraining += 1
-		}
+		
 		if behaviour.LoadedAnExample {
 			howManyPeopleHave.LoadedAnExample += 1
 		}
@@ -110,8 +99,6 @@ func (sc *SimpleCounter) Report() string {
 // phase.
 type UserBehaviour struct {
 	Launched              bool
-	EnteredTrainingCage   bool
-	CompletedTrainingCage bool
 	LoadedAnExample       bool
 	SignInStarted         bool
 	SignInSucceeded       bool
@@ -127,8 +114,6 @@ func NewUserBehaviour() *UserBehaviour {
 // onboarding milestones.
 type HowManyPeopleHave struct {
 	Launched                    int
-	EnteredTraining             int
-	CompletedTraining           int
 	LoadedAnExample             int
 	TriedToSignIn               int
 	SucceededSigningIn          int
