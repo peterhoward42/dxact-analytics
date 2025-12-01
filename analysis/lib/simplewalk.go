@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	visitor "github.com/peterhoward42/dxact-analytics/analysis/lib/visitors"
 	"github.com/peterhoward42/dxact-analytics/lib"
@@ -32,6 +33,11 @@ func (sw *SimpleWalker) processNode(path string, d os.DirEntry, err error) error
 		return nil
 	}
 	if d.IsDir() {
+		return nil
+	}
+	// Ignore the mac specific DS_Store files that show up if you / I make the mistake of
+	// visiting the downloaded files on the mac with Finder :-(
+	if strings.Contains(d.Name(), "DS_Store") {
 		return nil
 	}
 	contents, ok := sw.readFile(path)
