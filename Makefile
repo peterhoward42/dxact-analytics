@@ -25,6 +25,7 @@ trigger:
 # Download the entire telemetry event bucket to the local file system.
 .PHONY: download
 download:
+	rm -rf ~/scratch/drawexact-telemetry
 	gcloud storage cp --recursive gs://drawexact-telemetry ~/scratch
 
 # Perform an analysis on the downloaded local copy of the telemetry events
